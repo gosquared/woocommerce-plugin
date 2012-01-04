@@ -35,13 +35,14 @@ add_option('gstc_trackPreview');
 add_option('gstc_trackUser');
 add_action('admin_init', 'gs_init');
 add_action('admin_menu', 'gs_options');
-gs_print_gstc();
+add_action('wp', 'gs_print_gstc');
 
 function gs_init() {
-    $style_url = WP_PLUGIN_URL . '/gosquared-livestats/gs.css';
+    $style_url = WP_PLUGIN_URL . '/gosquared-woocommerce/gs.css';
     $style_file = WP_PLUGIN_DIR . '/gosquared-livestats/gs.css';
     /* Register our stylesheet. */
     wp_register_style('gs_style', $style_url);
+
 }
 
 function gs_options() {
@@ -64,6 +65,10 @@ function gs_fail($message) {
 
 function gs_warn($message) {
     echo '<div class="center"><div class="message_wrapper"><div class="gs_warn">' . $message . '</div></div></div>';
+}
+
+function woocommerce_installed() {
+    return class_exists( 'woocommerce_payment_gateway' );
 }
 
 function gs_options_page() {
@@ -101,6 +106,11 @@ function gs_options_page() {
             if(!$msg) $msg = 'An error occurred';
             gs_fail($msg);
         }
+    }
+
+    if (!woocommerce_installed()) {
+        $msg = "WooCommerce Plugin is not installed";
+        gs_fail($msg);
     }
 
     $acct = get_option('gstc_acct');
@@ -227,8 +237,14 @@ function gs_print_gstc() {
         if ($gstc_userDetail) {
             $params['VisitorName'] = $gstc_userDetail;
         }
-        wp_enqueue_script('gstc', WP_PLUGIN_URL . '/gosquared-livestats/tracker.js', '', false, true);
+        if (woocommerce_installed()) {
+            global $woocommerce;
+            $params['Visitor'] = array();
+            $params['Visitor']['cart_total'] = $woocommerce->cart->get_cart_total();
+        }
+        wp_enqueue_script('gstc', WP_PLUGIN_URL . '/gosquared-woocommerce/tracker.js', '', false, true);
         wp_localize_script('gstc', 'GoSquared', $params);
+        $meta = get_user_meta( get_current_user_id(), $input, true );
     }
 }
 
